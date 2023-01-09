@@ -91,12 +91,14 @@ set(EXAMPLE_SOURCES example/logger_wrapper.cpp example/main.cpp)
 
 source_group("" FILES ${EXAMPLE_HEADERS} ${EXAMPLE_SOURCES})
 add_executable(${PROJECT_NAME} ${EXAMPLE_HEADERS} ${EXAMPLE_SOURCES})
-target_link_libraries(${PROJECT_NAME} PRIVATE $<$<BOOL:${ENABLE_SPDLOG}>:spdlog_header_only> $<$<BOOL:${UNIX}>:pthread>)
+target_link_libraries(${PROJECT_NAME} PRIVATE
+   $<$<BOOL:${ENABLE_SPDLOG}>:spdlog_header_only> ## use head-only library of spdlog when spdlog enable
+   $<$<AND:$<BOOL:${UNIX}>,$<NOT:$<BOOL:${ENABLE_SPDLOG}>>>:pthread> ## add link flag `-lpthread` under unix when spdlog disabled
+)
+## add preprocessing macro `ENABLE_SPDLOG` when spdlog enable
 target_compile_definitions(${PROJECT_NAME} PRIVATE $<$<BOOL:${ENABLE_SPDLOG}>:ENABLE_SPDLOG>)
-if(ENABLE_SPDLOG)
 ## avoid excessive warnings about '#pragma GCC target'
-  target_compile_options(${PROJECT_NAME} PRIVATE $<$<AND:$<BOOL:${UNIX}>,$<BOOL:${ENABLE_SPDLOG}>>:-Wno-pragmas>)## avoid excessive warnings about '#pragma GCC target')
-endif()
+target_compile_options(${PROJECT_NAME} PRIVATE $<$<AND:$<BOOL:${UNIX}>,$<BOOL:${ENABLE_SPDLOG}>>:-Wno-pragmas>)
 
 set(VS_STARTUP_PROJECT ${PROJECT_NAME})
 
