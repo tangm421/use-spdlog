@@ -171,6 +171,7 @@ namespace example
         logger_ptr get_default_logger();
         void flush_on(level_enum log_level);
         void flush_every(std::chrono::seconds interval);
+        void shutdown();
     } // namespace logger
 
     //////////////////////////////////////////////////////////////////////////

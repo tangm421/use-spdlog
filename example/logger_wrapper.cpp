@@ -7,6 +7,7 @@
 #else
 #   include <thread>
 #   include <iomanip>
+#   include <ctime>
 #endif
 
 namespace example
@@ -244,6 +245,13 @@ namespace example
 #endif
         }
 
+        void shutdown()
+        {
+#if defined(ENABLE_SPDLOG)
+            spdlog::shutdown();
+#endif
+        }
+
     } // namespace logger
 
 
@@ -258,8 +266,12 @@ namespace example
         auto us = std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count() % 1000000;
         const std::time_t now_tt = std::chrono::system_clock::to_time_t(now);
         auto file = std::string(m_file_);
+        char sztime[16] = { 0 };
+        std::strftime(sztime, sizeof(sztime), "%T", std::localtime(&now_tt));
         ss << level_str[m_level_]
-            << " | " << std::put_time(std::localtime(&now_tt), "%T") << "." << std::setfill('0') << std::setw(6) << us << std::setfill(' ')
+            //!!! not defined in gcc 4.8.3
+            //<< " | " << std::put_time(std::localtime(&now_tt), "%T") << "." << std::setfill('0') << std::setw(6) << us << std::setfill(' ')
+            << " | " << sztime << "." << std::setfill('0') << std::setw(6) << us << std::setfill(' ')
             << " | " << std::setw(5) << std::this_thread::get_id()
             << " | " << std::setw(20) << (file.size() < 20 ? file : file.substr(file.size() - 20)) << ":" << std::left << std::setw(4) << m_line_;
         //if (m_func_)

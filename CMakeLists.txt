@@ -2,7 +2,20 @@ cmake_policy(PUSH)
 
 cmake_minimum_required(VERSION 3.16 FATAL_ERROR)
 
-project(example VERSION 0.1.1226.1 DESCRIPTION "example pf using spdlog" LANGUAGES C CXX)
+list(APPEND _SUPPORT_TARGET_PLATFORM 3531a 3531d)
+set(BUILD_TARGET_PLATFORM "" CACHE STRING "Specify the build target platform, choice one from supported target platform: ${_SUPPORT_TARGET_PLATFORM}")
+
+if(CMAKE_HOST_UNIX)
+    if(BUILD_TARGET_PLATFORM STREQUAL "3531a")
+        set(CMAKE_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/cmake/Toolchain-arm-hisiv400-linux.cmake")
+    elseif(BUILD_TARGET_PLATFORM STREQUAL "3531d")
+        set(CMAKE_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/cmake/Toolchain-aarch64-himix200-linux.cmake")
+    endif()
+endif()
+
+
+project(example VERSION 0.1.109.1 DESCRIPTION "example pf using spdlog" LANGUAGES C CXX)
+
 
 option(ENABLE_SPDLOG "Whether to use spdlog" ON)
 option(ENABLE_DEBUG "Whether to display the detailed configuration process of cmake" OFF)
@@ -10,6 +23,20 @@ if(ENABLE_DEBUG)
   set(FETCHCONTENT_QUIET OFF)
 else()
   set(FETCHCONTENT_QUIET ON)
+endif()
+
+
+## set flags for Cross-Compiling
+## `CMAKE_CROSSCOMPILING` will be set to `TRUE` if set `CMAKE_TOOLCHAIN_FILE`
+if(CMAKE_CROSSCOMPILING)
+    message(STATUS "Cross-Compiling for ${CMAKE_SYSTEM_NAME}[${CMAKE_SYSTEM_PROCESSOR}], CMAKE_TOOLCHAIN_FILE:${CMAKE_TOOLCHAIN_FILE}")
+    if(BUILD_TARGET_PLATFORM STREQUAL "3531a")
+        add_compile_options(-mcpu=cortex-a9 -mfloat-abi=softfp -mfpu=neon -mno-unaligned-access -fno-aggressive-loop-optimizations)
+        add_link_options(-mcpu=cortex-a9)
+    elseif(BUILD_TARGET_PLATFORM STREQUAL "3531d")
+        add_compile_options(-mcpu=cortex-a53)
+        add_link_options(-mcpu=cortex-a53)
+    endif()
 endif()
 
 ## ----------------------------------------------------------- handle dependent libraries ...
@@ -59,16 +86,16 @@ set(CMAKE_CXX_STANDARD 11)
 #set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(EXAMPLE_HEADERS example/logger_wrapper.h)
+set(EXAMPLE_HEADERS example/logger_wrapper.h example/ZkMSFifo.h)
 set(EXAMPLE_SOURCES example/logger_wrapper.cpp example/main.cpp)
 
 source_group("" FILES ${EXAMPLE_HEADERS} ${EXAMPLE_SOURCES})
 add_executable(${PROJECT_NAME} ${EXAMPLE_HEADERS} ${EXAMPLE_SOURCES})
-target_link_libraries(${PROJECT_NAME} PRIVATE $<$<BOOL:${ENABLE_SPDLOG}>:spdlog_header_only>)
+target_link_libraries(${PROJECT_NAME} PRIVATE $<$<BOOL:${ENABLE_SPDLOG}>:spdlog_header_only> $<$<BOOL:${UNIX}>:pthread>)
 target_compile_definitions(${PROJECT_NAME} PRIVATE $<$<BOOL:${ENABLE_SPDLOG}>:ENABLE_SPDLOG>)
 if(ENABLE_SPDLOG)
 ## avoid excessive warnings about '#pragma GCC target'
-target_compile_options(${PROJECT_NAME} PRIVATE $<$<AND:$<BOOL:${COMPILER_IS_GNU}>,$<BOOL:${ENABLE_SPDLOG}>>:-Wno-pragmas>)
+  target_compile_options(${PROJECT_NAME} PRIVATE $<$<AND:$<BOOL:${UNIX}>,$<BOOL:${ENABLE_SPDLOG}>>:-Wno-pragmas>)## avoid excessive warnings about '#pragma GCC target')
 endif()
 
 set(VS_STARTUP_PROJECT ${PROJECT_NAME})
